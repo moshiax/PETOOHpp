@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PETOOH++ 🐓</title>
+  <script src="ext/tailwind.js"></script>
+  <style>
+    * { scrollbar-width: thin; scrollbar-color: #238636 #0d1117; }
+    *::-webkit-scrollbar { width: 8px; height: 8px; }
+    *::-webkit-scrollbar-thumb { background: #238636; border-radius: 4px; }
+    *::-webkit-scrollbar-track { background: #0d1117; }
+    .custom-checkbox { position: relative; display: inline-block; width: 20px; height: 20px; }
+    .custom-checkbox input { opacity: 0; width: 0; height: 0; }
+    .custom-checkbox span { position: absolute; top: 0; left: 0; width: 20px; height: 20px; background: #161b22; border: 2px solid #30363d; border-radius: 6px; cursor: pointer; transition: all 0.2s ease; }
+    .custom-checkbox input:checked + span { background: #238636; border-color: #238636; }
+    .custom-checkbox span:after { content: ""; position: absolute; display: none; left: 6px; top: 2px; width: 5px; height: 11px; border: solid white; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+    .custom-checkbox input:checked + span:after { display: block; }
+	#pluginCode:empty::before { content: attr(placeholder); color: #6c757d; pointer-events: none; }
+	#pluginModal > div { max-height: 90vh; overflow-y: auto; box-sizing: border-box; width: 100%; max-width: 600px; padding: 1.5rem; }
+	#pluginModal textarea, #pluginModal [contenteditable] { max-height: 50vh; overflow-y: auto; }
+  </style>
+</head>
+<body class="bg-[#0d1117] text-gray-200 font-mono p-6 overflow-x-hidden">
+
+  <div class="max-w-6xl mx-auto flex flex-col md:flex-row gap-6">
+
+    <!-- Main -->
+    <div class="flex-1 min-w-0 flex flex-col">
+      <h1 class="text-3xl font-bold mb-4 text-green-500">PETOOH++ 🐓</h1>
+      
+      <textarea id="code"
+        class="w-full min-h-[200px] rounded-xl bg-[#161b22] border border-[#30363d] 
+               p-4 text-base resize-y focus:outline-none focus:ring-2 focus:ring-green-500
+               "
+      >Ko^80 Kukarek kO^11 Kukarek Ko^15 Kukarek kO^5 Kukarek^2 kO^7 Kukarek kO^29 Kukarek^2</textarea>
+      
+      <button onclick="runPetooh()"
+        class="mt-4 px-6 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-white font-semibold shadow-lg ">
+        ▶ Run
+      </button>
+
+	<h2 class="text-2xl mt-6 mb-2 font-semibold text-green-400">Output</h2>
+	<div id="output" class="w-full min-h-[80px] rounded-xl bg-[#161b22] border border-[#30363d] 
+							text-lg whitespace-pre-wrap break-all overflow-x-hidden overflow-y-auto shadow-inner 
+							box-border p-4">
+	</div>
+
+    </div>
+
+    <!-- Sidebar -->
+	<div id="sidebar" class="invisible w-full md:w-80 flex-shrink-0 rounded-xl bg-[#161b22] border border-[#30363d] 
+				 p-4 overflow-y-auto max-h-[80vh] min-w-0 shadow-lg">
+
+      
+      <h2 class="text-xl font-bold mb-4 text-green-400">Plugins</h2>
+      <div id="pluginList" class="space-y-3 break-all"></div>
+      
+		<button onclick="openModalForAdd()"
+		  class="mt-4 w-full py-2 bg-green-500 hover:bg-green-600 rounded-lg text-white font-semibold shadow-lg ">
+		  ＋ Add Plugin
+		</button>
+    </div>
+  </div>
+
+  <!-- Modal -->
+  <div id="pluginModal"
+    class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
+    <div class="bg-[#161b22] p-6 rounded-2xl shadow-xl w-full max-w-lg mx-auto">
+      <h3 class="text-2xl font-bold mb-4 text-green-400">Add Plugin</h3>
+      
+      <input type="text" id="pluginName" placeholder="Plugin Name"
+        class="w-full mb-3 p-3 rounded-lg bg-[#0d1117] border border-[#30363d] 
+               text-base focus:ring-2 focus:ring-green-500 outline-none ">
+      
+      <textarea id="pluginDesc" placeholder="Description"
+        class="w-full mb-3 p-3 rounded-lg bg-[#0d1117] border border-[#30363d] 
+               text-base resize-y focus:ring-2 focus:ring-green-500 outline-none "></textarea>
+      
+      <div id="pluginCode" contenteditable="true"
+           placeholder="function(code){ return code; }"
+           class="w-full mb-3 p-3 rounded-lg bg-[#0d1117] border border-[#30363d] 
+                  text-base outline-none break-words min-h-[100px] ">
+      </div>
+
+	<input type="text" id="pluginURL" placeholder="Plugin URL"
+		   class="w-full mb-3 p-3 rounded-lg bg-[#0d1117] border border-[#30363d] 
+				  text-base focus:ring-2 focus:ring-green-500 outline-none ">
+
+      <div class="flex justify-end gap-3">
+        <button onclick="addPlugin()"
+          class="px-5 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-white font-semibold shadow ">Add</button>
+        <button onclick="closeModal()"
+          class="px-5 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg text-white shadow ">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="petooh.js"></script>
+<script>
+class PetoohRunner {
+	constructor({
+		plugins = [],
+		logTarget = console.log
+	} = {}) {
+		this._plugins = plugins;
+		this._logTarget = logTarget;
+	}
+
+	get logTarget() {
+		return this._logTarget;
+	}
+	set logTarget(fn) {
+		if (typeof fn === "function") {
+			this._logTarget = fn;
+		} else {
+			throw new Error("logTarget must be a function");
+		}
+	}
+
+	_log(...args) {
+		if (this._logTarget) this._logTarget(...args);
+	}
+
+	get plugins() {
+		if (typeof this._plugins === "function") {
+			try {
+				return this._plugins();
+			} catch (e) {
+				this._log("Error loading plugins dynamically", e);
+				return [];
+			}
+		}
+		return this._plugins;
+	}
+	set plugins(val) {
+		this._plugins = val;
+	}
+
+	getActivePlugins() {
+		return this.plugins.filter(p => p.enabled);
+	}
+
+	applyPlugins(code) {
+		for (let p of this.getActivePlugins()) {
+			try {
+				code = p.fn(code);
+			} catch (e) {
+				this._log("Plugin error", p.name, e);
+			}
+		}
+		return code;
+	}
+
+	run(code) {
+		const p = new Petooh({
+			log: msg => this._log(msg)
+		});
+		const transformedCode = this.applyPlugins(code);
+		p.listen(null, transformedCode);
+		return p.told();
+	}
+
+	addPlugin(plugin) {
+		if (!Array.isArray(this._plugins)) return;
+		const idx = this._plugins.findIndex(p => p.name === plugin.name);
+		if (idx >= 0) {
+			Object.assign(this._plugins[idx], plugin);
+		} else {
+			this._plugins.push(plugin);
+		}
+		savePlugins();
+	}
+
+	setPluginAtIndex(idx, plugin) {
+		if (Array.isArray(this._plugins)) {
+			if (idx < 0 || idx >= this._plugins.length) return;
+			Object.assign(this._plugins[idx], plugin);
+			savePlugins();
+		}
+	}
+
+	deletePlugin(idx) {
+		if (Array.isArray(this._plugins)) {
+			if (idx < 0 || idx >= this._plugins.length) return;
+			this._plugins.splice(idx, 1);
+			savePlugins();
+		}
+	}
+
+	movePlugin(idx, direction) {
+		if (Array.isArray(this._plugins)) {
+			const newIdx = idx + (direction === "up" ? -1 : 1);
+			if (newIdx < 0 || newIdx >= this._plugins.length) return;
+			[this._plugins[idx], this._plugins[newIdx]] = [this._plugins[newIdx], this._plugins[idx]];
+			savePlugins();
+		}
+	}
+}
+
+/* ===================== Default Plugins ===================== */
+
+const defaultPlugins = [];
+
+function loadExternalPlugin(url, options = { async: false }) {
+    if (options.async) {
+        return fetch(url)
+            .then(res => {
+                if (!res.ok) throw new Error(`Failed to load plugin: ${url}, status: ${res.status}`);
+                return res.text();
+            })
+            .then(text => {
+                const plugin = new Function(`return ${text}`)();
+                validatePlugin(plugin, url);
+                console.log('Plugin loaded (async):', plugin);
+                return plugin;
+            });
+    } else {
+        const xhr = new XMLHttpRequest();
+        xhr.open('GET', url, false);
+        xhr.send();
+
+        if (xhr.status >= 200 && xhr.status < 300) {
+            const plugin = new Function(`return ${xhr.responseText}`)();
+            validatePlugin(plugin, url);
+            console.log('Plugin loaded (sync):', plugin);
+            return plugin;
+        } else {
+            throw new Error(`Failed to load plugin: ${url}, status: ${xhr.status}`);
+        }
+    }
+}
+
+function validatePlugin(plugin, url) {
+    if (
+        typeof plugin !== 'object' ||
+        typeof plugin.name !== 'string' ||
+        typeof plugin.desc !== 'string' ||
+        typeof plugin.fn !== 'function' ||
+        typeof plugin.enabled !== 'boolean'
+    ) {
+        throw new Error(`Invalid plugin structure: ${url}`);
+    }
+}
+
+function loadDefaultPlugins() {
+    try {
+        const alt = loadExternalPlugin('./plugins/altCommands.js');
+        const macros = loadExternalPlugin('./plugins/Macros.js');
+        defaultPlugins.push(alt, macros);
+    } catch (e) {
+        console.error('Error loading default plugins', e);
+    }
+}
+
+loadDefaultPlugins();
+
+/* ===================== Storage ===================== */
+function loadPlugins() {
+	let stored = JSON.parse(localStorage.getItem("userPlugins") || "[]");
+	for (let dp of defaultPlugins) {
+		if (!stored.find(p => p.name === dp.name)) {
+			stored.push({
+				name: dp.name,
+				desc: dp.desc,
+				code: dp.fn.toString(),
+				fn: dp.fn,
+				enabled: dp.enabled
+			});
+		}
+	}
+	for (let p of stored) {
+		if (typeof p.fn !== "function") {
+			try {
+				p.fn = eval("(" + p.code + ")");
+			} catch (e) {
+				console.error("Plugin creation error", p.name, e);
+				p.fn = code => code;
+			}
+		}
+	}
+	return stored;
+}
+
+function savePlugins() {
+	const toStore = runner.plugins.map(p => ({
+		name: p.name,
+		desc: p.desc,
+		code: p.code || p.fn.toString(),
+		enabled: p.enabled
+	}));
+	localStorage.setItem("userPlugins", JSON.stringify(toStore));
+}
+/* ===================== Runner ===================== */
+let runner = new PetoohRunner({
+	plugins: loadPlugins()
+});
+/* ===================== Run ===================== */
+function runPetooh() {
+	try {
+		const code = document.getElementById('code').value;
+		const outputEl = document.getElementById('output');
+		const output = runner.run(code);
+		outputEl.textContent = output;
+		savePlugins();
+	} catch (e) {
+		document.getElementById('output').textContent = "Error: " + e.message;
+	}
+}
+/* ===================== UI Binding ===================== */
+function updatePluginUI() {
+    const container = document.getElementById('pluginList');
+    container.innerHTML = '';
+
+    runner.plugins.forEach((p, idx) => {
+        const div = document.createElement('div');
+        div.className = 'plugin flex items-center justify-between p-2 bg-[#161b22] rounded-lg border border-[#30363d]';
+        div.innerHTML = `
+          <label class="custom-checkbox">
+            <input type="checkbox" data-idx="${idx}" ${p.enabled?'checked':''}><span></span>
+          </label>
+          <span class="plugin-title">${p.name}</span>
+          <div class="flex gap-1">
+            <button data-action="up" data-idx="${idx}">↑</button>
+            <button data-action="down" data-idx="${idx}">↓</button>
+            <button data-action="edit" data-idx="${idx}">✎</button>
+            <button data-action="delete" data-idx="${idx}">✖</button>
+          </div>
+        `;
+        div.querySelector('input').addEventListener('change', e => {
+            runner.setPluginAtIndex(idx, {
+                enabled: e.target.checked
+            });
+            updatePluginUI();
+        });
+        div.querySelectorAll('button').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const action = btn.dataset.action;
+                const i = parseInt(btn.dataset.idx);
+                if (action === "up" || action === "down") runner.movePlugin(i, action);
+                if (action === "delete") runner.deletePlugin(i);
+                if (action === "edit") openEditModal(i);
+                updatePluginUI();
+            });
+        });
+        container.appendChild(div);
+    });
+
+    document.getElementById('sidebar').classList.remove('invisible');
+}
+/* ===================== Modal ===================== */
+const modal = document.getElementById('pluginModal');
+
+function openModal() {
+	modal.style.display = 'flex';
+}
+
+function closeModal() {
+	modal.style.display = 'none';
+}
+
+modal.addEventListener('mousedown', e => {
+  if (e.target === modal) {
+    closeModal();
+  }
+});
+document.addEventListener('keydown', e => {
+	if (e.key === 'Escape') closeModal();
+});
+
+function openModalForAdd() {
+    modal.style.display = 'flex';
+    modal.querySelectorAll('input, textarea').forEach(el => el.value = '');
+    modal.querySelector('#pluginCode').innerText = '';
+    const addBtn = modal.querySelector('button:nth-of-type(1)');
+    addBtn.textContent = 'Add';
+    addBtn.onclick = addPlugin;
+}
+
+function openEditModal(idx) {
+	const plugin = runner.plugins[idx];
+	document.getElementById('pluginName').value = plugin.name;
+	document.getElementById('pluginDesc').value = plugin.desc;
+	document.getElementById('pluginCode').innerText = plugin.code || plugin.fn.toString();
+	modal.style.display = 'flex';
+	const addBtn = document.querySelector('#pluginModal button:nth-of-type(1)');
+	addBtn.textContent = 'Save';
+	addBtn.onclick = function() {
+		const name = document.getElementById('pluginName').value.trim();
+		const desc = document.getElementById('pluginDesc').value.trim();
+		const code = document.getElementById('pluginCode').innerText.trim();
+		if (!name || !code) return alert("Name/code required");
+		let fn;
+		try {
+			fn = new Function("code", "return (" + code + ")(code);");
+		} catch (e) {
+			return alert("Plugin code error");
+		}
+		runner.setPluginAtIndex(idx, {
+			name,
+			desc,
+			code,
+			fn
+		});
+		updatePluginUI();
+		closeModal();
+	};
+}
+/* ===================== Add Plugin ===================== */
+async function addPlugin() {
+    const name = document.getElementById('pluginName').value.trim();
+    const desc = document.getElementById('pluginDesc').value.trim();
+    const code = document.getElementById('pluginCode').innerText.trim();
+    const url = document.getElementById('pluginURL').value.trim();
+
+    if (!name && !url) return alert("Name or URL required");
+
+    let plugin;
+
+    try {
+        if (url) {
+            plugin = await loadExternalPlugin(url, { async: true });
+        } else {
+            const fn = new Function("code", "return (" + code + ")(code);");
+            plugin = { name, desc, code, fn, enabled: true };
+        }
+    } catch (e) {
+        return alert("Plugin load error: " + e.message);
+    }
+
+    runner.addPlugin(plugin);
+    updatePluginUI();
+    closeModal();
+}
+/* ===================== Init ===================== */
+updatePluginUI();
+window.addEventListener('DOMContentLoaded', () => {
+	const output = document.getElementById('output');
+	const rect = output.getBoundingClientRect();
+	output.style.minWidth = rect.width + "px";
+	output.style.minHeight = rect.height + "px";
+});
+</script>
+</body>
+</html>
