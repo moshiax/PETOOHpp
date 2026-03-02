@@ -283,22 +283,36 @@
 	Petooh.prototype.compileToC = function (code) {
 		var tokens = this.tokenize(this.expandMacros(code));
 		this.buildJumpTable(tokens);
+		var tokenSet = Object.create(null);
+		for (var ti = 0; ti < tokens.length; ti++) {
+			tokenSet[tokens[ti]] = true;
+		}
+
+		var needsStdio = (
+			tokenSet.Kukarek || tokenSet.Kukduk || tokenSet.Kukareku || tokenSet.Kukdku ||
+			tokenSet.Kukaryku || tokenSet.Kukarekuk
+		);
+		var needsStdlib = tokenSet.Kukudu;
+		var needsTime = tokenSet.Kukudu;
 
 		var lines = [
-			'#include <stdio.h>',
+			needsStdio ? '#include <stdio.h>' : '',
 			'#include <stdint.h>',
 			'#include <string.h>',
-			'#include <stdlib.h>',
-			'#include <time.h>',
+			needsStdlib ? '#include <stdlib.h>' : '',
+			needsTime ? '#include <time.h>' : '',
 			'',
 			'#define TAPE_SIZE 30000',
 			'',
 			'int main(void) {',
 			'  uint8_t tape[TAPE_SIZE];',
 			'  memset(tape, 0, sizeof(tape));',
-			'  int ptr = 0;',
-			'  srand((unsigned)time(NULL));'
+			'  int ptr = 0;'
 		];
+
+		if (tokenSet.Kukudu) {
+			lines.push('  srand((unsigned)time(NULL));');
+		}
 
 		var indent = '  ';
 
