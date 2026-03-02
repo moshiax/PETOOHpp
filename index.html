@@ -4,12 +4,115 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>PETOOH++ 🐓</title>
-  <script src="ext/tailwind.js"></script>
   <style>
     * { scrollbar-width: thin; scrollbar-color: #238636 #0d1117; }
     *::-webkit-scrollbar { width: 8px; height: 8px; }
     *::-webkit-scrollbar-thumb { background: #238636; border-radius: 4px; }
     *::-webkit-scrollbar-track { background: #0d1117; }
+    body {
+      margin: 0;
+      background: #0d1117;
+      color: #d1d5db;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      padding: 1.5rem;
+      overflow-x: hidden;
+      box-sizing: border-box;
+    }
+    .layout { max-width: 72rem; margin: 0 auto; display: flex; flex-direction: column; gap: 1.5rem; }
+    @media (min-width: 768px) { .layout { flex-direction: row; } }
+    .main-panel { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+    .page-title { font-size: 1.875rem; line-height: 2.25rem; font-weight: 700; margin: 0 0 1rem; color: #22c55e; }
+    .section-title { font-size: 1.5rem; margin: 1.5rem 0 0.5rem; font-weight: 600; color: #4ade80; }
+    .panel-title { font-size: 1.25rem; margin: 0 0 1rem; font-weight: 700; color: #4ade80; }
+    .editor, .output-box, .modal-input, .modal-editor {
+      width: 100%;
+      border-radius: 0.75rem;
+      border: 1px solid #30363d;
+      background: #161b22;
+      color: inherit;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    .editor { min-height: 200px; padding: 1rem; resize: vertical; }
+    .output-box {
+      min-height: 80px;
+      font-size: 1.125rem;
+      white-space: pre-wrap;
+      overflow-x: hidden;
+      overflow-y: auto;
+      box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.35);
+      word-break: break-all;
+      padding: 1rem;
+    }
+    .sidebar {
+      width: 100%;
+      flex-shrink: 0;
+      border-radius: 0.75rem;
+      background: #161b22;
+      border: 1px solid #30363d;
+      padding: 1rem;
+      overflow-y: auto;
+      max-height: 80vh;
+      min-width: 0;
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3);
+      box-sizing: border-box;
+    }
+    @media (min-width: 768px) { .sidebar { width: 20rem; } }
+    .button-primary, .button-secondary {
+      border: 0;
+      border-radius: 0.5rem;
+      color: #fff;
+      cursor: pointer;
+      font-weight: 600;
+      transition: background-color 0.2s ease;
+    }
+    .button-primary { background: #22c55e; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3); }
+    .button-primary:hover { background: #16a34a; }
+    .button-secondary { background: #4b5563; }
+    .button-secondary:hover { background: #374151; }
+    .run-btn { margin-top: 1rem; padding: 0.5rem 1.5rem; width: fit-content; }
+    .add-plugin-btn { margin-top: 1rem; width: 100%; padding: 0.5rem; }
+    .plugin-list { display: flex; flex-direction: column; gap: 0.75rem; word-break: break-all; }
+    .plugin-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      padding: 0.5rem;
+      border-radius: 0.5rem;
+      border: 1px solid #30363d;
+      background: #161b22;
+    }
+    .plugin-title { flex: 1; min-width: 0; padding: 0 0.5rem; }
+    .plugin-actions { display: flex; gap: 0.25rem; }
+    .plugin-actions button {
+      background: #21262d;
+      border: 1px solid #30363d;
+      color: #d1d5db;
+      border-radius: 0.375rem;
+      padding: 0.15rem 0.45rem;
+      cursor: pointer;
+    }
+    .plugin-actions button:hover { background: #30363d; }
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      align-items: center;
+      justify-content: center;
+      z-index: 50;
+      padding: 0 1rem;
+      display: none;
+      box-sizing: border-box;
+    }
+    .modal-card { background: #161b22; border-radius: 1rem; box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4); margin: 0 auto; }
+    .modal-title { font-size: 1.5rem; font-weight: 700; margin: 0 0 1rem; color: #4ade80; }
+    .modal-input, .modal-editor { margin-bottom: 0.75rem; padding: 0.75rem; background: #0d1117; border-radius: 0.5rem; }
+    .modal-input:focus, .modal-editor:focus, .editor:focus { outline: 2px solid #22c55e; outline-offset: 1px; }
+    .modal-editor { min-height: 100px; word-break: break-word; }
+    .modal-actions { display: flex; justify-content: flex-end; gap: 0.75rem; }
+    .modal-action-btn { padding: 0.5rem 1.25rem; }
+    .invisible { visibility: hidden; }
     .custom-checkbox { position: relative; display: inline-block; width: 20px; height: 20px; }
     .custom-checkbox input { opacity: 0; width: 0; height: 0; }
     .custom-checkbox span { position: absolute; top: 0; left: 0; width: 20px; height: 20px; background: #161b22; border: 2px solid #30363d; border-radius: 6px; cursor: pointer; transition: all 0.2s ease; }
@@ -21,43 +124,38 @@
 	#pluginModal textarea, #pluginModal [contenteditable] { max-height: 50vh; overflow-y: auto; }
   </style>
 </head>
-<body class="bg-[#0d1117] text-gray-200 font-mono p-6 overflow-x-hidden">
+<body>
 
-  <div class="max-w-6xl mx-auto flex flex-col md:flex-row gap-6">
+  <div class="layout">
 
     <!-- Main -->
-    <div class="flex-1 min-w-0 flex flex-col">
-      <h1 class="text-3xl font-bold mb-4 text-green-500">PETOOH++ 🐓</h1>
+    <div class="main-panel">
+      <h1 class="page-title">PETOOH++ 🐓</h1>
       
       <textarea id="code"
-        class="w-full min-h-[200px] rounded-xl bg-[#161b22] border border-[#30363d] 
-               p-4 text-base resize-y focus:outline-none focus:ring-2 focus:ring-green-500
-               "
+        class="editor"
       >Ko^80 Kukarek kO^11 Kukarek Ko^15 Kukarek kO^5 Kukarek^2 kO^7 Kukarek kO^29 Kukarek^2</textarea>
       
       <button onclick="runPetooh()"
-        class="mt-4 px-6 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-white font-semibold shadow-lg ">
+        class="button-primary run-btn">
         ▶ Run
       </button>
 
-	<h2 class="text-2xl mt-6 mb-2 font-semibold text-green-400">Output</h2>
-	<div id="output" class="w-full min-h-[80px] rounded-xl bg-[#161b22] border border-[#30363d] 
-							text-lg whitespace-pre-wrap break-all overflow-x-hidden overflow-y-auto shadow-inner 
-							box-border p-4">
+	<h2 class="section-title">Output</h2>
+	<div id="output" class="output-box">
 	</div>
 
     </div>
 
     <!-- Sidebar -->
-	<div id="sidebar" class="invisible w-full md:w-80 flex-shrink-0 rounded-xl bg-[#161b22] border border-[#30363d] 
-				 p-4 overflow-y-auto max-h-[80vh] min-w-0 shadow-lg">
+	<div id="sidebar" class="sidebar invisible">
 
       
-      <h2 class="text-xl font-bold mb-4 text-green-400">Plugins</h2>
-      <div id="pluginList" class="space-y-3 break-all"></div>
+      <h2 class="panel-title">Plugins</h2>
+      <div id="pluginList" class="plugin-list"></div>
       
 		<button onclick="openModalForAdd()"
-		  class="mt-4 w-full py-2 bg-green-500 hover:bg-green-600 rounded-lg text-white font-semibold shadow-lg ">
+		  class="button-primary add-plugin-btn">
 		  ＋ Add Plugin
 		</button>
     </div>
@@ -65,33 +163,29 @@
 
   <!-- Modal -->
   <div id="pluginModal"
-    class="hidden fixed inset-0 bg-black/70 flex items-center justify-center z-50 px-4">
-    <div class="bg-[#161b22] p-6 rounded-2xl shadow-xl w-full max-w-lg mx-auto">
-      <h3 class="text-2xl font-bold mb-4 text-green-400">Add Plugin</h3>
+    class="modal-overlay">
+    <div class="modal-card">
+      <h3 class="modal-title">Add Plugin</h3>
       
       <input type="text" id="pluginName" placeholder="Plugin Name"
-        class="w-full mb-3 p-3 rounded-lg bg-[#0d1117] border border-[#30363d] 
-               text-base focus:ring-2 focus:ring-green-500 outline-none ">
+        class="modal-input">
       
       <textarea id="pluginDesc" placeholder="Description"
-        class="w-full mb-3 p-3 rounded-lg bg-[#0d1117] border border-[#30363d] 
-               text-base resize-y focus:ring-2 focus:ring-green-500 outline-none "></textarea>
+        class="modal-input"></textarea>
       
       <div id="pluginCode" contenteditable="true"
            placeholder="function(code){ return code; }"
-           class="w-full mb-3 p-3 rounded-lg bg-[#0d1117] border border-[#30363d] 
-                  text-base outline-none break-words min-h-[100px] ">
+           class="modal-editor">
       </div>
 
 	<input type="text" id="pluginURL" placeholder="Plugin URL"
-		   class="w-full mb-3 p-3 rounded-lg bg-[#0d1117] border border-[#30363d] 
-				  text-base focus:ring-2 focus:ring-green-500 outline-none ">
+		   class="modal-input">
 
-      <div class="flex justify-end gap-3">
+      <div class="modal-actions">
         <button onclick="addPlugin()"
-          class="px-5 py-2 bg-green-500 hover:bg-green-600 rounded-lg text-white font-semibold shadow ">Add</button>
+          class="button-primary modal-action-btn">Add</button>
         <button onclick="closeModal()"
-          class="px-5 py-2 bg-gray-600 hover:bg-gray-700 rounded-lg text-white shadow ">Cancel</button>
+          class="button-secondary modal-action-btn">Cancel</button>
       </div>
     </div>
   </div>
@@ -314,13 +408,13 @@ function updatePluginUI() {
 
     runner.plugins.forEach((p, idx) => {
         const div = document.createElement('div');
-        div.className = 'plugin flex items-center justify-between p-2 bg-[#161b22] rounded-lg border border-[#30363d]';
+        div.className = 'plugin-item';
         div.innerHTML = `
           <label class="custom-checkbox">
             <input type="checkbox" data-idx="${idx}" ${p.enabled?'checked':''}><span></span>
           </label>
           <span class="plugin-title">${p.name}</span>
-          <div class="flex gap-1">
+          <div class="plugin-actions">
             <button data-action="up" data-idx="${idx}">↑</button>
             <button data-action="down" data-idx="${idx}">↓</button>
             <button data-action="edit" data-idx="${idx}">✎</button>
