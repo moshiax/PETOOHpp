@@ -24,6 +24,30 @@
 | Kud      | Loop start (while current cell != 0)         |
 | kud      | Loop end                                     |
 
+
+## Extensions
+
+| Command   | Description |
+|-----------|-------------|
+| Kokoko    | Add right neighbor cell to current cell            |
+| kokoko    | Subtract right neighbor cell from current cell     |
+| KOKO      | Multiply current cell by right neighbor cell       |
+| koko      | Divide current cell by right neighbor cell (0 => 0)|
+| Kooo      | Modulo current cell by right neighbor cell (0 => 0)|
+| KooKoo    | Bitwise left shift current cell                    |
+| kooKoo    | Bitwise right shift current cell                   |
+| KooKo     | Bitwise AND current with right neighbor            |
+| kooKo     | Bitwise OR current with right neighbor             |
+| Kooko     | Bitwise XOR current with right neighbor            |
+| KokoKud   | Swap current cell with right neighbor cell         |
+| Kokokud   | Copy current cell into right neighbor cell         |
+| Kukduk    | Output current cell as decimal integer             |
+| Kukdku    | Read decimal integer into current cell             |
+| Kukarekuk | Output zero-terminated string from current pointer |
+| Kukaryku  | Read line into tape as zero-terminated string      |
+| Kukudu    | Put random byte (0..255) into current cell         |
+| Kudkuk    | Halt execution immediately                         |
+
 ## `^` Macros
 
 Supported form:

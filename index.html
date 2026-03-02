@@ -339,9 +339,8 @@ function validatePlugin(plugin, url) {
 
 function loadDefaultPlugins() {
     try {
-        const alt = loadExternalPlugin('./plugins/altCommands.js');
         const macros = loadExternalPlugin('./plugins/Macros.js');
-        defaultPlugins.push(alt, macros);
+        defaultPlugins.push(macros);
     } catch (e) {
         console.error('Error loading default plugins', e);
     }
