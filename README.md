@@ -1,39 +1,38 @@
 # PETOOH++ 🐓
 
-**PETOOH++** --- a web-based interpreter for the [PETOOH](https://github.com/Ky6uk/PETOOH) with plugin support.
-
-------------------------------------------------------------------------
+**PETOOH++** is a Turing-complete PETOOH variant with a web runtime, built-in `^` macros, C compilation support, and conversion tools.
 
 ## Features
 
--   Interpret PETOOH code directly in the browser.
--   Macros support (example`Ko^5 → KoKoKoKoKo`).
--   Plugins: add, enable/disable, edit, and delete.
--   Console functions support
+- Instruction set including input (`Kukareku`) and loops (`Kud`/`kud`).
+- `^` macro expansion is built into the language core:
+  - `Ko^80` -> 80 increments.
+  - `Kukarek^2` -> two output operations.
+- `PETOOH++ -> C` compiler output for native builds (`cc`, `clang`, `gcc (redhat virus)`).
+- JavaScript `Brainfuck -> PETOOH++` converter.
 
-------------------------------------------------------------------------
-## Basics
+## Core Commands
 
-| Command | Description |
-|---------|-------------|
-| `Ko`    | Increment the byte at the data pointer |
-| `kO`    | Decrement the byte at the data pointer |
-| `Kudah` | Increment the data pointer (move right) |
-| `kudah` | Decrement the data pointer (move left) |
-| `Kukarek` | Output the byte at the data pointer as an ASCII character |
-| `Kud`   | If current cell is zero, skip the loop/block |
-| `kud`   | If current cell is nonzero, repeat the loop/block |
+| Command  | Description                                  |
+| -------- | ---------------------------------------------|
+| Ko       | Increment current cell                       |
+| kO       | Decrement current cell                       |
+| Kudah    | Move pointer right                           |
+| kudah    | Move pointer left                            |
+| Kukarek  | Output current cell as a character           |
+| Kukareku | Read one input byte into current cell        |
+| Kud      | Loop start (while current cell != 0)         |
+| kud      | Loop end                                     |
 
-------------------------------------------------------------------------
+## `^` Macros
 
-## 🐓 Example PETOOH++ Code with Macros plugin
+Supported form:
 
-```petooh
-Ko^80 Kukarek kO^11 Kukarek Ko^15 Kukarek kO^5 Kukarek^2 kO^7 Kukarek kO^29 Kukarek^2
-> PETOOH++
+```txt
+<command>^<number>
 ```
 
-## Example: Hello World! (with Macros plugin)
+## Example: Hello World!
 
 ```petooh
 Ko^72 Kukarek
@@ -50,76 +49,29 @@ Kudah Ko^100 Kukarek
 Kudah Ko^33 Kukarek
 ```
 
-------------------------------------------------------------------------
+## Runtime Usage (JS API)
 
-## 🔌 Plugins
+```js
+const Petooh = require('./petooh');
 
-### Built-in Plugins
+const vm = new Petooh({ input: 'A' });
+vm.listen(null, 'Kukareku Kukarek');
+console.log(vm.told()); // A
+```
+## Convert Brainfuck to PETOOH++
 
-1.  **altCommands** --- adds support for alternative userdefined command names
-    (`OP_INC`, `OP_DEC`, etc.).\
-    *(disabled by default)*
-2.  **Macros** --- macro expansion for shorthands.\
-    *(enabled by default)*
-
-### Example Custom Plugin
-
-A plugin that replaces COCK to Kukarek:
-
-``` js
-function(code){
-  return code.replace(/COCK/g, "Kukarek");
-}
+```bash
+node tools/bf_to_petooh.js "++++++++[>++++[>++>+++>+++>+<<<<-]>+>+>->>+[<]<-]>>.>---.+++++++..+++.>>.<-.<.+++.------.--------.>>+.>++."
 ```
 
-------------------------------------------------------------------------
+## Compile PETOOH++ to C
 
-## 🛠 API (PetoohRunner)
-
-### Create a Runner
-
-``` js
-const runner = new PetoohRunner({
-    plugins: [
-        {
-            name: "Macros",
-            desc: "Custom macros",
-            fn: code => {
-                const macros = [
-                    code => code.replace(/([a-zA-Z]+)\^(\d+)/g, (_, cmd, times) => cmd.repeat(+times)),
-                ];
-                for (const fn of macros) {
-                    try {
-                        code = fn(code);
-                    } catch (e) {
-                        console.error("Macro error", e);
-                    }
-                }
-                return code;
-            },
-            enabled: true
-        }
-    ],
-    logTarget: msg => console.warn("Petooh log:", msg)
-});
+```bash
+node tools/petooh_to_c.js "Ko^65 Kukarek" A.c
+cc A.c -O2 -o A
+A
 ```
 
-### Run Code
+## Plugins
 
-``` js
-runner.run("Ko^80 Kukarek kO^11 Kukarek Ko^15 Kukarek kO^5 Kukarek Kukarek kO^7 Kukarek kO^29 Kukarek Kukarek"); 
-> 'PETOOH++'
-```
-
-### Manage Plugins
-
-``` js
-runner.addPlugin({
-  name: "COCK",
-  desc: "A plugin that replaces COCK to Kukarek",
-  fn: code => code.replace(/COCK/g, "Kukarek"),
-  enabled: true
-})
-```
-
-------------------------------------------------------------------------
+Plugins (preprocessors) are supported in the web interface

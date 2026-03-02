@@ -12,137 +12,150 @@
     }
     else {
         root.Petooh = factory();
-  }
+    }
 }(this, function () {
     'use strict';
 
     // constructor desu
+    var TOKEN_RE = /(Kukareku|Kukarek|Kudah|kudah|Kud|kud|Ko|kO)/g;
+    var MACRO_RE = /([a-zA-Z]+)\^(\d+)/g;
+
+    function clampByte(value) {
+        var x = value % 256;
+        return x < 0 ? x + 256 : x;
+    }
+
     var Petooh = function (options) {
         this.options = options || {};
-        this.filter = new RegExp(/^[adehkKoOru]$/);
-        this.log = this.options.log || function() {};
+        this.log = this.options.log || function () {};
         this.cleanBrain();
     };
 
     Petooh.prototype.cleanBrain = function () {
-        this.brain = [];
+        this.pointer = 0;
+        this.tape = Object.create(null);
         this.result = [];
-        this.buffer = '';
-        this.stack = {};
-        this.level = 0;
-        this.currentPosition = 0;
-        this.word = '';
+        this.inputOffset = 0;
         this.log('cleanBrain');
     };
 
     // ears of your rooster
+    Petooh.prototype.expandMacros = function (code) {
+        return String(code || '').replace(MACRO_RE, function (_, cmd, times) {
+            var count = Number(times);
+            if (!Number.isFinite(count) || count < 0) {
+                throw new Error('Invalid macro repeat: ' + times);
+            }
+            return cmd.repeat(count);
+        });
+    };
+
+    Petooh.prototype.tokenize = function (code) {
+        return (String(code || '').match(TOKEN_RE) || []);
+    };
+
+    Petooh.prototype.buildJumpTable = function (tokens) {
+        var jump = {};
+        var stack = [];
+
+        for (var i = 0; i < tokens.length; i++) {
+            if (tokens[i] === 'Kud') {
+                stack.push(i);
+            }
+            else if (tokens[i] === 'kud') {
+                if (stack.length === 0) {
+                    throw new Error('Unbalanced loop: kud without Kud at token ' + i);
+                }
+                var open = stack.pop();
+                jump[open] = i;
+                jump[i] = open;
+            }
+        }
+
+        if (stack.length > 0) {
+            throw new Error('Unbalanced loop: missing kud for Kud at token ' + stack.pop());
+        }
+
+        return jump;
+    };
+
+    Petooh.prototype.readCell = function () {
+        return this.tape[this.pointer] === void 0 ? 0 : this.tape[this.pointer];
+    };
+
+    Petooh.prototype.writeCell = function (value) {
+        this.tape[this.pointer] = clampByte(value);
+    };
+
+    Petooh.prototype.readInput = function () {
+        var input = this.options.input;
+
+        if (typeof input === 'function') {
+            var produced = input(this.inputOffset++);
+            if (produced === null || produced === void 0) {
+                return 0;
+            }
+            if (typeof produced === 'number') {
+                return clampByte(produced);
+            }
+            return clampByte(String(produced).charCodeAt(0) || 0);
+        }
+
+        var raw = input === void 0 ? '' : String(input);
+        if (this.inputOffset >= raw.length) {
+            this.inputOffset++;
+            return 0;
+        }
+
+        return raw.charCodeAt(this.inputOffset++);
+    };
+
     Petooh.prototype.listen = function (error, sound) {
         if (error) {
             this.peckError();
         }
 
-        for (let i = 0; i < sound.length; i++) {
-            let char = sound[i];
-            if (!this.filter.test(char)) continue;
+        var expanded = this.expandMacros(sound);
+        var tokens = this.tokenize(expanded);
+        var jump = this.buildJumpTable(tokens);
 
-            let buffer = this.word + char;
-            this.log(`listen: buffer=${buffer}, level=${this.level}, pos=${this.currentPosition}`);
+        for (var ip = 0; ip < tokens.length; ip++) {
+            var token = tokens[ip];
+            var cell = this.readCell();
 
-            if (buffer === 'Ko') {
-                this.level > 0
-                    ? this.remember(buffer)
-                    : this.increasePlz();
-                this.forget();
+            if (token === 'Ko') {
+                this.writeCell(cell + 1);
             }
-            else if (buffer === 'kO') {
-                this.level > 0
-                    ? this.remember(buffer)
-                    : this.decreasePlz();
-                this.forget();
+            else if (token === 'kO') {
+                this.writeCell(cell - 1);
             }
-            else if (buffer === 'Kudah') {
-                this.level > 0
-                    ? this.remember(buffer)
-                    : this.currentPosition++;
-                this.forget();
+            else if (token === 'Kudah') {
+                this.pointer++;
             }
-            else if (buffer === 'kudah') {
-                this.level > 0
-                    ? this.remember(buffer)
-                    : this.currentPosition--;
-                this.forget();
+            else if (token === 'kudah') {
+                this.pointer--;
             }
-            else if (this.word === 'Kud' && char !== 'a') {
-                this.stack[++this.level] = [];
-                this.forget(char);
+            else if (token === 'Kukarek') {
+                this.result.push(String.fromCharCode(cell));
             }
-            else if (this.word === 'kud' && char !== 'a') {
-                this.repeat();
-                this.level--;
-                this.forget(char);
+            else if (token === 'Kukareku') {
+                this.writeCell(this.readInput());
             }
-            else if (buffer === 'Kukarek') {
-                this.level > 0
-                    ? this.remember(buffer)
-                    : this.success();
-                this.forget();
+            else if (token === 'Kud') {
+                if (cell === 0) {
+                    ip = jump[ip];
+                }
             }
-            else {
-                this.word += char;
+            else if (token === 'kud') {
+                if (cell !== 0) {
+                    ip = jump[ip] - 1;
+                }
             }
         }
     };
 
-	Petooh.prototype.repeat = function () {
-		var self = this;
-		while (this.brain[this.currentPosition] > 0) {
-			this.stack[this.level].forEach(function (word) {
-				if      (word === 'Ko')      { self.increasePlz(); }
-				else if (word === 'kO')      { self.decreasePlz(); }
-				else if (word === 'Kudah')   { self.currentPosition++; }
-				else if (word === 'kudah')   { self.currentPosition--; }
-				else if (word === 'Kukarek') { self.success(); }
-			});
-		}
-	};
-
-    // catch some error
     Petooh.prototype.peckError = function () {
         throw new Error('peck-peck');
-    };
-
-    Petooh.prototype.forget = function (sound) {
-        this.word = sound === void 0 ? '' : sound;
-    };
-
-    Petooh.prototype.increasePlz = function () {
-        if (this.currentPosition < 0) this.currentPosition = 0;
-        this.brain[this.currentPosition] === void 0
-            ? this.brain[this.currentPosition] = 1
-            : this.brain[this.currentPosition]++;
-        this.log(`increasePlz: brain[${this.currentPosition}]=${this.brain[this.currentPosition]}`);
-    };
-
-    Petooh.prototype.decreasePlz = function () {
-        if (this.currentPosition < 0) this.currentPosition = 0;
-        this.brain[this.currentPosition] === void 0
-            ? this.brain[this.currentPosition] = 1
-            : this.brain[this.currentPosition]--;
-        this.log(`decreasePlz: brain[${this.currentPosition}]=${this.brain[this.currentPosition]}`);
-    };
-
-    Petooh.prototype.remember = function (word) {
-        if (!this.stack[this.level]) {
-            this.peckError();
-        }
-
-        this.stack[this.level].push(word);
-        this.log(`remember: ${word} at level ${this.level}`);
-    };
-
-    Petooh.prototype.success = function () {
-        this.result.push(String.fromCharCode(this.brain[this.currentPosition]));
-        this.log(`success: result length=${this.result.length}`);
     };
 
     Petooh.prototype.told = function () {
@@ -151,6 +164,81 @@
             this.cleanBrain();
         }
         return result;
+    };
+
+	Petooh.prototype.compileToC = function (code) {
+		var tokens = this.tokenize(this.expandMacros(code));
+		this.buildJumpTable(tokens);
+
+		var lines = [
+			'#include <stdio.h>',
+			'#include <stdint.h>',
+			'#include <string.h>',
+			'',
+			'#define TAPE_SIZE 30000',
+			'',
+			'int main(void) {',
+			'  uint8_t tape[TAPE_SIZE];',
+			'  memset(tape, 0, sizeof(tape));',
+			'  int ptr = 0;'
+		];
+
+		var indent = '  ';
+
+		for (var i = 0; i < tokens.length; i++) {
+			var t = tokens[i];
+
+			if (t === 'Ko' || t === 'kO') {
+				var count = 1;
+				while (tokens[i + count] === t) count++;
+
+				if (t === 'Ko') {
+					lines.push(indent + 'tape[ptr] += ' + count + ';');
+				} else {
+					lines.push(indent + 'tape[ptr] -= ' + count + ';');
+				}
+
+				i += count - 1;
+			}
+
+			else if (t === 'Kudah' || t === 'kudah') {
+				var step = 1;
+				while (tokens[i + step] === t) step++;
+
+				if (t === 'Kudah') {
+					lines.push(indent + 'ptr = (ptr + ' + step + ') % TAPE_SIZE;');
+				} else {
+					lines.push(indent + 'ptr = (ptr - ' + step + ' + TAPE_SIZE) % TAPE_SIZE;');
+				}
+
+				i += step - 1;
+			}
+
+			else if (t === 'Kukarek') {
+				lines.push(indent + 'putchar(tape[ptr]);');
+			}
+			else if (t === 'Kukareku') {
+				lines.push(indent + '{ int c = getchar(); tape[ptr] = (c == EOF) ? 0 : (uint8_t)c; }');
+			}
+			else if (t === 'Kud') {
+				lines.push(indent + 'while (tape[ptr]) {');
+				indent += '  ';
+			}
+			else if (t === 'kud') {
+				indent = indent.slice(2);
+				lines.push(indent + '}');
+			}
+		}
+
+		lines.push('  return 0;');
+		lines.push('}');
+
+		return lines.join('\n');
+	};
+
+    Petooh.compileToC = function (code, options) {
+        var compiler = new Petooh(options || {});
+        return compiler.compileToC(code);
     };
 
     return Petooh;
