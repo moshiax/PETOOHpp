@@ -18,24 +18,18 @@ function compileToC(code, options) {
   const needsHaltLabel = tokenSet.has('Kudkuk');
 
   const lines = [
-    needsStdio ? '#include <stdio.h>' : '',
-    '#include <stdint.h>',
-    '#include <string.h>',
-    needsStdlib ? '#include <stdlib.h>' : '',
-    needsTime ? '#include <time.h>' : '',
-    '',
+    needsStdio ? '#include<stdio.h>' : '',
+    needsStdlib ? '#include<stdlib.h>' : '',
+    needsTime ? '#include<time.h>' : '',
     '#define TAPE_SIZE 30000',
-    '',
-    'int main(void) {',
-    '  uint8_t tape[TAPE_SIZE] = {0};',
-    '  int ptr = 0;'
+    'int main(){unsigned char t[TAPE_SIZE]={0};int p=0;'
   ];
 
   if (tokenSet.has('Kukudu')) {
-    lines.push('  srand((unsigned)time(NULL));');
+    lines.push('srand((unsigned)time(0));');
   }
 
-  let indent = '  ';
+  let indent = '';
 
   function emit(line) {
     lines.push(indent + line);
@@ -47,7 +41,7 @@ function compileToC(code, options) {
     if (t === 'Ko' || t === 'kO') {
       let count = 1;
       while (tokens[i + count] === t) count++;
-      emit('tape[ptr] = (uint8_t)(tape[ptr] ' + (t === 'Ko' ? '+' : '-') + ' ' + count + ');');
+      emit('t[p]' + (t === 'Ko' ? '+' : '-') + '=' + count + ';');
       i += count - 1;
       continue;
     }
@@ -55,13 +49,13 @@ function compileToC(code, options) {
     if (t === 'Kudah' || t === 'kudah') {
       let step = 1;
       while (tokens[i + step] === t) step++;
-      emit('ptr = (ptr ' + (t === 'Kudah' ? '+' : '-') + ' ' + step + ' + TAPE_SIZE) % TAPE_SIZE;');
+      emit('p=(p' + (t === 'Kudah' ? '+' : '-') + step + '+TAPE_SIZE)%TAPE_SIZE;');
       i += step - 1;
       continue;
     }
 
     if (t === 'Kud') {
-      emit('while (tape[ptr]) {');
+      emit('while(t[p]){');
       indent += '  ';
       continue;
     }
@@ -79,61 +73,61 @@ function compileToC(code, options) {
 
     switch (t) {
       case 'Kukarek':
-        emit('putchar(tape[ptr]);');
+        emit('putchar(t[p]);');
         break;
       case 'Kukduk':
-        emit('printf("%u", (unsigned)tape[ptr]);');
+        emit('printf("%u",(unsigned)t[p]);');
         break;
       case 'Kukareku':
-        emit('{ int c = getchar(); tape[ptr] = (uint8_t)(c == EOF ? 0 : c); }');
+        emit('{int c=getchar();t[p]=c<0?0:c;}');
         break;
       case 'Kukdku':
-        emit('{ unsigned n = 0; if (scanf("%u", &n) != 1) n = 0; tape[ptr] = (uint8_t)n; }');
+        emit('if(scanf("%hhu",t+p)<1)t[p]=0;');
         break;
       case 'Kokoko':
-        emit('tape[ptr] = (uint8_t)(tape[ptr] + tape[(ptr + 1) % TAPE_SIZE]);');
+        emit('t[p]+=t[(p+1)%TAPE_SIZE];');
         break;
       case 'kokoko':
-        emit('tape[ptr] = (uint8_t)(tape[ptr] - tape[(ptr + 1) % TAPE_SIZE]);');
+        emit('t[p]-=t[(p+1)%TAPE_SIZE];');
         break;
       case 'KOKO':
-        emit('tape[ptr] = (uint8_t)(tape[ptr] * tape[(ptr + 1) % TAPE_SIZE]);');
+        emit('t[p]*=t[(p+1)%TAPE_SIZE];');
         break;
       case 'koko':
-        emit('{ uint8_t d = tape[(ptr + 1) % TAPE_SIZE]; tape[ptr] = (uint8_t)(d ? tape[ptr] / d : 0); }');
+        emit('{unsigned char d=t[(p+1)%TAPE_SIZE];t[p]=d?t[p]/d:0;}');
         break;
       case 'Kooo':
-        emit('{ uint8_t d = tape[(ptr + 1) % TAPE_SIZE]; tape[ptr] = (uint8_t)(d ? tape[ptr] % d : 0); }');
+        emit('{unsigned char d=t[(p+1)%TAPE_SIZE];t[p]=d?t[p]%d:0;}');
         break;
       case 'KooKoo':
-        emit('tape[ptr] = (uint8_t)(tape[ptr] << 1);');
+        emit('t[p]<<=1;');
         break;
       case 'kooKoo':
-        emit('tape[ptr] = (uint8_t)(tape[ptr] >> 1);');
+        emit('t[p]>>=1;');
         break;
       case 'KooKo':
-        emit('tape[ptr] = (uint8_t)(tape[ptr] & tape[(ptr + 1) % TAPE_SIZE]);');
+        emit('t[p]&=t[(p+1)%TAPE_SIZE];');
         break;
       case 'kooKo':
-        emit('tape[ptr] = (uint8_t)(tape[ptr] | tape[(ptr + 1) % TAPE_SIZE]);');
+        emit('t[p]|=t[(p+1)%TAPE_SIZE];');
         break;
       case 'Kooko':
-        emit('tape[ptr] = (uint8_t)(tape[ptr] ^ tape[(ptr + 1) % TAPE_SIZE]);');
+        emit('t[p]^=t[(p+1)%TAPE_SIZE];');
         break;
       case 'KokoKud':
-        emit('{ int r = (ptr + 1) % TAPE_SIZE; uint8_t v = tape[ptr]; tape[ptr] = tape[r]; tape[r] = v; }');
+        emit('{int r=(p+1)%TAPE_SIZE;unsigned char v=t[p];t[p]=t[r];t[r]=v;}');
         break;
       case 'Kokokud':
-        emit('tape[(ptr + 1) % TAPE_SIZE] = tape[ptr];');
+        emit('t[(p+1)%TAPE_SIZE]=t[p];');
         break;
       case 'Kukarekuk':
-        emit('{ int s = ptr; while (tape[s]) { putchar(tape[s]); s = (s + 1) % TAPE_SIZE; } }');
+        emit('{int s=p;while(t[s]){putchar(t[s]);s=(s+1)%TAPE_SIZE;}}');
         break;
       case 'Kukaryku':
-        emit("{ int s = ptr, c; while ((c = getchar()) != EOF && c != '\\n' && c != '\\r') { tape[s] = (uint8_t)c; s = (s + 1) % TAPE_SIZE; } tape[s] = 0; }");
+        emit("{int s=p,c;while((c=getchar())!=EOF&&c!='\\n'&&c!='\\r'){t[s]=c;s=(s+1)%TAPE_SIZE;}t[s]=0;}");
         break;
       case 'Kukudu':
-        emit('tape[ptr] = (uint8_t)(rand() % 256);');
+        emit('t[p]=rand()%256;');
         break;
       default:
         break;
@@ -143,7 +137,7 @@ function compileToC(code, options) {
   if (needsHaltLabel) {
     lines.push('PETOOH_END:');
   }
-  lines.push('  return 0;');
+  lines.push('return 0;');
   lines.push('}');
 
   return lines.filter(Boolean).join('\n');
